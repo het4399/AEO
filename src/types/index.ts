@@ -17,6 +17,15 @@ export interface AnalysisExplanations {
   seo_relevance_explanation: string;
 }
 
+export interface GoogleValidation {
+  eligible_for_rich_results: boolean;
+  rich_results_types: string[];
+  google_score: number;
+  errors: string[];
+  warnings: string[];
+  recommendations: string[];
+}
+
 export interface AnalysisResult {
   success: boolean;
   url: string;
@@ -25,6 +34,7 @@ export interface AnalysisResult {
   overall_score: number;
   metrics: AnalysisMetrics;
   explanations: AnalysisExplanations;
+  google_validation: GoogleValidation;
   errors: string[];
   warnings: string[];
   recommendations: string[];

@@ -8,6 +8,13 @@ lxml>=4.9.0
 Flask>=2.3.0
 Flask-CORS>=4.0.0
 
+# Enhanced analysis dependencies
+beautifulsoup4>=4.12.0
+requests-html>=0.10.0
+selenium>=4.15.0
+webdriver-manager>=4.0.0
+jsonschema>=4.17.0
+
 # Additional utilities
 urllib3>=1.26.0
 certifi>=2023.7.22

@@ -71,6 +71,74 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
         />
       </div>
 
+      {/* Google Validation Results */}
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <span className="text-2xl">🔍</span>
+          Google Rich Results Validation
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`w-4 h-4 rounded-full ${result.google_validation.eligible_for_rich_results ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="font-semibold">
+                {result.google_validation.eligible_for_rich_results ? 'Eligible for Rich Results' : 'Not Eligible for Rich Results'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-gray-600">Google Score:</span>
+              <span className={`font-bold text-lg ${result.google_validation.google_score >= 70 ? 'text-green-600' : result.google_validation.google_score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                {result.google_validation.google_score}/100
+              </span>
+            </div>
+            {result.google_validation.rich_results_types.length > 0 && (
+              <div>
+                <span className="text-gray-600 text-sm">Rich Results Types:</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {result.google_validation.rich_results_types.map((type, index) => (
+                    <span key={index} className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                      {type}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div>
+            {result.google_validation.errors.length > 0 && (
+              <div className="mb-3">
+                <span className="text-red-600 font-semibold text-sm">Errors:</span>
+                <ul className="text-sm text-red-600 mt-1">
+                  {result.google_validation.errors.map((error, index) => (
+                    <li key={index}>• {error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {result.google_validation.warnings.length > 0 && (
+              <div className="mb-3">
+                <span className="text-yellow-600 font-semibold text-sm">Warnings:</span>
+                <ul className="text-sm text-yellow-600 mt-1">
+                  {result.google_validation.warnings.map((warning, index) => (
+                    <li key={index}>• {warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+        {result.google_validation.recommendations.length > 0 && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <span className="text-blue-800 font-semibold text-sm">Google Recommendations:</span>
+            <ul className="text-sm text-blue-700 mt-1">
+              {result.google_validation.recommendations.map((rec, index) => (
+                <li key={index}>• {rec}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
       {/* Schema Information */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
