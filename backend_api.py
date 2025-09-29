@@ -44,18 +44,15 @@ def analyze_structured_data():
         # Get Google Rich Results validation
         google_validation = google_validator.validate_url(url)
         
-        # Calculate enhanced overall score with Google validation
-        base_score = (metrics.coverage_score + metrics.quality_score + 
-                     metrics.completeness_score + metrics.seo_relevance_score) / 4
-        
-        # Add Google validation bonus
-        google_bonus = 0
-        if google_validation.eligible_for_rich_results:
-            google_bonus = 15  # 15 point bonus for Google Rich Results eligibility
-        elif google_validation.google_score > 50:
-            google_bonus = 10  # 10 point bonus for good Google score
-        
-        overall_score = min(100.0, base_score + google_bonus)
+        # Blend Google score into SEO relevance (no separate bonus)
+        blended_seo_relevance = (0.7 * metrics.seo_relevance_score) + (0.3 * google_validation.google_score)
+        base_score = (
+            metrics.coverage_score +
+            metrics.quality_score +
+            metrics.completeness_score +
+            blended_seo_relevance
+        ) / 4
+        overall_score = min(100.0, base_score)
         
         if overall_score >= 90:
             grade = "A+"
@@ -91,7 +88,7 @@ def analyze_structured_data():
                 'coverage_score': round(metrics.coverage_score, 1),
                 'quality_score': round(metrics.quality_score, 1),
                 'completeness_score': round(metrics.completeness_score, 1),
-                'seo_relevance_score': round(metrics.seo_relevance_score, 1)
+                'seo_relevance_score': round(blended_seo_relevance, 1)
             },
             'explanations': {
                 'coverage_explanation': metrics.coverage_explanation,

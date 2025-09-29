@@ -42,11 +42,137 @@ class StructuredDataAnalyzer:
         self.important_schemas = [
             'Organization', 'WebSite', 'WebPage', 'Article', 'BlogPosting',
             'Product', 'Review', 'FAQPage', 'HowTo', 'Recipe', 'Event',
-            'LocalBusiness', 'Person', 'BreadcrumbList', 'VideoObject'
+            'LocalBusiness', 'Person', 'BreadcrumbList', 'VideoObject', 'Language'
         ]
         self.seo_critical_schemas = [
             'Organization', 'WebSite', 'WebPage', 'Article', 'BreadPage'
         ]
+        
+        # Define relevant schemas for each website type
+        self.website_type_schemas = {
+            'ecommerce': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'Product', 'Review', 'BreadcrumbList'],
+                'irrelevant': ['Recipe', 'Event', 'HowTo', 'LocalBusiness']
+            },
+            'restaurant': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'LocalBusiness', 'Event', 'Review'],
+                'irrelevant': ['Product', 'Recipe', 'HowTo', 'Article']
+            },
+            'blog': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'Article', 'BlogPosting', 'Person'],
+                'irrelevant': ['Product', 'LocalBusiness', 'Event']
+            },
+            'business': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'LocalBusiness', 'FAQPage'],
+                'irrelevant': ['Product', 'Recipe', 'Event', 'HowTo']
+            },
+            'news': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'Article', 'Person'],
+                'irrelevant': ['Product', 'LocalBusiness', 'Recipe', 'Event']
+            },
+            'saas': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'FAQPage', 'Article', 'BreadcrumbList'],
+                'irrelevant': ['Product', 'Recipe', 'HowTo', 'LocalBusiness']
+            },
+            'portfolio': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'Person', 'BreadcrumbList', 'Article'],
+                'irrelevant': ['Product', 'Recipe', 'HowTo', 'LocalBusiness']
+            },
+            'education': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'FAQPage', 'Article', 'Event'],
+                'irrelevant': ['Product', 'Recipe', 'HowTo']
+            },
+            'healthcare': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'LocalBusiness', 'FAQPage', 'Review'],
+                'irrelevant': ['Product', 'Recipe', 'HowTo']
+            },
+            'realestate': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'LocalBusiness', 'BreadcrumbList', 'FAQPage'],
+                'irrelevant': ['Recipe', 'HowTo']
+            },
+            'jobboard': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'BreadcrumbList', 'Article'],
+                'irrelevant': ['Product', 'Recipe', 'HowTo']
+            },
+            'nonprofit': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'Event', 'FAQPage', 'Article'],
+                'irrelevant': ['Product', 'Recipe', 'HowTo']
+            },
+            'forum': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'BreadcrumbList', 'Article', 'Person'],
+                'irrelevant': ['Product', 'Recipe']
+            },
+            'directory': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'BreadcrumbList', 'LocalBusiness'],
+                'irrelevant': ['Product', 'Recipe']
+            },
+            'marketplace': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'Product', 'Review', 'BreadcrumbList'],
+                'irrelevant': ['Recipe', 'HowTo']
+            },
+            'media': {
+                'relevant': ['Organization', 'WebSite', 'WebPage', 'Article', 'VideoObject', 'Person'],
+                'irrelevant': ['Product', 'Recipe']
+            },
+            'general': {
+                'relevant': ['Organization', 'WebSite', 'WebPage'],
+                'irrelevant': []
+            }
+        }
+    
+    def _detect_website_type(self, url: str, html_content: str, schema_types: List[str]) -> str:
+        """Detect website type based on URL, content, and existing schemas"""
+        try:
+            # Normalize
+            url_lower = url.lower()
+            content_lower = html_content.lower()
+            
+            # Strong ecommerce confirmation signals
+            if any(kw in content_lower for kw in ['add to cart', 'buy now', 'checkout']) or 'Product' in schema_types:
+                return 'ecommerce'
+            
+            # Category keyword heuristics (URL + content)
+            def has_any(text: str, kws: list) -> bool:
+                return any(k in text for k in kws)
+            
+            if has_any(url_lower + ' ' + content_lower, ['saas', 'free trial', 'pricing', 'features']):
+                return 'saas'
+            if has_any(url_lower + ' ' + content_lower, ['portfolio', 'case study', 'case studies', 'works', 'projects']):
+                return 'portfolio'
+            if has_any(url_lower + ' ' + content_lower, ['university', 'school', 'course', 'curriculum', 'learn more']):
+                return 'education'
+            if has_any(url_lower + ' ' + content_lower, ['clinic', 'hospital', 'doctor', 'patients', 'appointments']):
+                return 'healthcare'
+            if has_any(url_lower + ' ' + content_lower, ['real estate', 'realtor', 'listings', 'property', 'rent']):
+                return 'realestate'
+            if has_any(url_lower + ' ' + content_lower, ['jobs', 'careers', 'hiring', 'apply now']):
+                return 'jobboard'
+            if has_any(url_lower + ' ' + content_lower, ['nonprofit', 'donate', 'mission', 'volunteer']):
+                return 'nonprofit'
+            if has_any(url_lower + ' ' + content_lower, ['forum', 'threads', 'discussions', 'community']):
+                return 'forum'
+            if has_any(url_lower + ' ' + content_lower, ['directory', 'businesses', 'listings', 'find near']):
+                return 'directory'
+            if has_any(url_lower + ' ' + content_lower, ['marketplace', 'sellers', 'buyers']):
+                return 'marketplace'
+            if has_any(url_lower + ' ' + content_lower, ['news', 'press', 'breaking', 'publisher']):
+                return 'news'
+            
+            # Agency/business signals
+            if has_any(url_lower + ' ' + content_lower, ['agency', 'services', 'service', 'marketing', 'seo', 'ppc', 'consulting', 'audit']):
+                return 'business'
+            
+            # Blog
+            if has_any(url_lower + ' ' + content_lower, ['blog', 'article', 'post']):
+                return 'blog'
+            
+            # Local business fallback
+            if 'LocalBusiness' in schema_types:
+                return 'business'
+            
+            return 'general'
+        except Exception:
+            return 'general'
     
     def analyze_url(self, url: str) -> StructuredDataMetrics:
         """
@@ -68,7 +194,7 @@ class StructuredDataAnalyzer:
             # Extract structured data
             extracted_data = extruct.extract(html, base_url=base_url)
             
-            return self._analyze_extracted_data(extracted_data, url)
+            return self._analyze_extracted_data(extracted_data, url, html)
             
         except requests.RequestException as e:
             logger.error(f"Error fetching URL {url}: {e}")
@@ -77,7 +203,7 @@ class StructuredDataAnalyzer:
             logger.error(f"Error analyzing URL {url}: {e}")
             return self._create_error_metrics([f"Analysis error: {e}"])
     
-    def _analyze_extracted_data(self, data: Dict, url: str) -> StructuredDataMetrics:
+    def _analyze_extracted_data(self, data: Dict, url: str, html_content: str = "") -> StructuredDataMetrics:
         """Analyze extracted structured data"""
         errors = []
         warnings = []
@@ -108,22 +234,31 @@ class StructuredDataAnalyzer:
                         invalid_schemas += 1
                         errors.extend(schema_errors)
         
-        # Calculate scores
-        coverage_score = self._calculate_coverage_score(schema_types)
+        # Detect website type for context-aware scoring
+        website_type = self._detect_website_type(url, html_content, schema_types)
+        
+        # Calculate scores with context awareness
+        coverage_score = self._calculate_coverage_score(schema_types, website_type)
         quality_score = self._calculate_quality_score(valid_schemas, total_schemas)
         completeness_score = self._calculate_completeness_score(data)
-        seo_relevance_score = self._calculate_seo_relevance_score(schema_types)
+        seo_relevance_score = self._calculate_context_aware_seo_score(schema_types, website_type)
         
-        # Generate explanations
-        coverage_explanation = self._get_coverage_explanation(schema_types, coverage_score)
+        # Generate explanations with context awareness
+        coverage_explanation = self._get_context_aware_coverage_explanation(schema_types, coverage_score, website_type)
         quality_explanation = self._get_quality_explanation(valid_schemas, total_schemas, quality_score)
         completeness_explanation = self._get_completeness_explanation(data, completeness_score)
-        seo_relevance_explanation = self._get_seo_relevance_explanation(schema_types, seo_relevance_score)
+        seo_relevance_explanation = self._get_context_aware_seo_explanation(schema_types, seo_relevance_score, website_type)
         
-        # Generate recommendations
-        recommendations = self._generate_recommendations(
-            schema_types, coverage_score, quality_score, completeness_score
-        )
+        # Generate context-aware recommendations
+        try:
+            recommendations = self._generate_context_aware_recommendations(
+                schema_types, coverage_score, quality_score, completeness_score, website_type
+            )
+        except AttributeError:
+            # Fallback to legacy method if new method not found
+            recommendations = self._generate_recommendations(
+                schema_types, coverage_score, quality_score, completeness_score
+            )
         
         return StructuredDataMetrics(
             total_schemas=total_schemas,
@@ -198,21 +333,38 @@ class StructuredDataAnalyzer:
         }
         return required_props.get(schema_type, [])
     
-    def _calculate_coverage_score(self, schema_types: List[str]) -> float:
-        """Calculate how well the page covers important schema types"""
+    def _calculate_coverage_score(self, schema_types: List[str], website_type: Optional[str] = None) -> float:
+        """Calculate how well the page covers relevant schema types"""
         if not schema_types:
             return 0.0
         
         unique_types = set(schema_types)
+        
+        # If website type is provided, compute coverage against its relevant set
+        if website_type:
+            type_config = self.website_type_schemas.get(website_type, self.website_type_schemas['general'])
+            relevant = type_config['relevant']
+            if not relevant:
+                return 0.0
+            found_relevant = sum(1 for schema in unique_types if schema in relevant)
+            # Base score from relevant schemas
+            base_score = (found_relevant / len(relevant)) * 60
+            
+            # Bonus for SEO-critical within type (intersection with global critical list)
+            critical_within_type = [s for s in self.seo_critical_schemas if s in relevant]
+            if critical_within_type:
+                found_critical = sum(1 for schema in unique_types if schema in critical_within_type)
+                bonus = (found_critical / len(critical_within_type)) * 40
+            else:
+                bonus = 0.0
+            
+            return min(100.0, base_score + bonus)
+        
+        # Fallback to legacy global important/critical coverage
         important_found = sum(1 for schema in unique_types if schema in self.important_schemas)
-        
-        # Base score from important schemas found
         base_score = (important_found / len(self.important_schemas)) * 60
-        
-        # Bonus for SEO-critical schemas
         seo_critical_found = sum(1 for schema in unique_types if schema in self.seo_critical_schemas)
         seo_bonus = (seo_critical_found / len(self.seo_critical_schemas)) * 40
-        
         return min(100.0, base_score + seo_bonus)
     
     def _get_coverage_explanation(self, schema_types: List[str], score: float) -> str:
@@ -240,6 +392,51 @@ class StructuredDataAnalyzer:
             explanation += "Add more content-specific schemas like Article, Product, or LocalBusiness."
         elif score < 80:
             explanation += "Consider adding specialized schemas like FAQPage, HowTo, or Review."
+        
+        return explanation
+    
+    def _get_context_aware_coverage_explanation(self, schema_types: List[str], score: float, website_type: str) -> str:
+        """Get context-aware coverage explanation"""
+        if not schema_types:
+            return "No structured data found. Add any schema types to start improving your coverage score."
+        
+        # Get relevant schemas for this website type
+        type_config = self.website_type_schemas.get(website_type, self.website_type_schemas['general'])
+        relevant_schemas = type_config['relevant']
+        irrelevant_schemas = type_config['irrelevant']
+        
+        unique_types = set(schema_types)
+        relevant_found = [schema for schema in unique_types if schema in relevant_schemas]
+        irrelevant_found = [schema for schema in unique_types if schema in irrelevant_schemas]
+        neutral_found = [schema for schema in unique_types if schema not in relevant_schemas and schema not in irrelevant_schemas]
+        
+        explanation = f"Website type: {website_type.title()}. Found {len(unique_types)} schema type(s): {', '.join(unique_types)}. "
+        
+        if relevant_found:
+            explanation += f"✅ Context-relevant schemas: {', '.join(relevant_found)}. "
+        
+        if irrelevant_found:
+            explanation += f"⚠️ Irrelevant schemas: {', '.join(irrelevant_found)} (may confuse search engines). "
+        
+        if neutral_found:
+            explanation += f"ℹ️ Neutral schemas: {', '.join(neutral_found)}. "
+        
+        # Context-specific recommendations
+        missing_relevant = [schema for schema in relevant_schemas if schema not in unique_types]
+        if missing_relevant:
+            explanation += f"Missing context-relevant schemas: {', '.join(missing_relevant[:3])}. "
+        
+        if score < 30:
+            if missing_relevant:
+                explanation += f"Add {', '.join(missing_relevant[:2])} schemas for {website_type} optimization."
+            else:
+                explanation += f"Add more {website_type}-specific schemas to improve coverage."
+        elif score < 60:
+            explanation += f"Add more {website_type}-specific schemas to improve coverage."
+        elif score < 80:
+            explanation += f"Consider adding specialized schemas for {website_type} websites."
+        else:
+            explanation += f"Excellent {website_type} schema coverage!"
         
         return explanation
     
@@ -323,8 +520,51 @@ class StructuredDataAnalyzer:
                         return True
         return False
     
+    def _calculate_context_aware_seo_score(self, schema_types: List[str], website_type: str) -> float:
+        """Calculate context-aware SEO relevance score"""
+        if not schema_types:
+            return 0.0
+        
+        # Get relevant and irrelevant schemas for this website type
+        type_config = self.website_type_schemas.get(website_type, self.website_type_schemas['general'])
+        relevant_schemas = type_config['relevant']
+        irrelevant_schemas = type_config['irrelevant']
+        
+        unique_types = set(schema_types)
+        score = 0.0
+        
+        # Base scoring weights
+        seo_weight = {
+            'Organization': 25,
+            'WebSite': 20,
+            'WebPage': 15,
+            'Article': 20,
+            'BlogPosting': 15,
+            'Product': 15,
+            'Review': 10,
+            'FAQPage': 15,
+            'HowTo': 10,
+            'Recipe': 10,
+            'Event': 10,
+            'LocalBusiness': 15,
+            'Person': 10,
+            'BreadcrumbList': 10,
+            'VideoObject': 10
+        }
+        
+        # Score relevant schemas (bonus for context-appropriate schemas)
+        for schema in unique_types:
+            if schema in relevant_schemas:
+                score += seo_weight.get(schema, 5) * 1.2  # 20% bonus for relevant schemas
+            elif schema not in irrelevant_schemas:
+                score += seo_weight.get(schema, 5)  # Normal score for neutral schemas
+            else:
+                score += seo_weight.get(schema, 5) * 0.3  # 70% penalty for irrelevant schemas
+        
+        return min(100.0, max(0.0, score))
+    
     def _calculate_seo_relevance_score(self, schema_types: List[str]) -> float:
-        """Calculate SEO relevance score"""
+        """Calculate SEO relevance score (legacy method for backward compatibility)"""
         if not schema_types:
             return 0.0
         
@@ -350,8 +590,51 @@ class StructuredDataAnalyzer:
         total_score = sum(seo_weight.get(schema, 5) for schema in unique_types)
         return min(100.0, total_score)
     
+    def _get_context_aware_seo_explanation(self, schema_types: List[str], score: float, website_type: str) -> str:
+        """Get context-aware SEO relevance explanation"""
+        if not schema_types:
+            return "No structured data found. Add SEO-critical schemas like Organization and WebSite to improve search rankings."
+        
+        # Get relevant and irrelevant schemas for this website type
+        type_config = self.website_type_schemas.get(website_type, self.website_type_schemas['general'])
+        relevant_schemas = type_config['relevant']
+        irrelevant_schemas = type_config['irrelevant']
+        
+        unique_types = set(schema_types)
+        relevant_found = [schema for schema in unique_types if schema in relevant_schemas]
+        irrelevant_found = [schema for schema in unique_types if schema in irrelevant_schemas]
+        
+        explanation = f"Website type: {website_type.title()}. Found {len(unique_types)} schema type(s). "
+        
+        if relevant_found:
+            explanation += f"Context-relevant schemas: {', '.join(relevant_found)}. "
+        else:
+            explanation += f"Missing context-relevant schemas for {website_type} websites. "
+        
+        if irrelevant_found:
+            explanation += f"⚠️ Irrelevant schemas detected: {', '.join(irrelevant_found)} (may confuse search engines). "
+        
+        # Context-specific recommendations
+        if website_type == 'ecommerce':
+            if score < 50:
+                explanation += "Add Product and Review schemas for e-commerce optimization."
+        elif website_type == 'restaurant':
+            if score < 50:
+                explanation += "Add LocalBusiness and Event schemas for restaurant optimization."
+        elif website_type == 'blog':
+            if score < 50:
+                explanation += "Add Article and BlogPosting schemas for content optimization."
+        elif website_type == 'business':
+            if score < 50:
+                explanation += "Add LocalBusiness and FAQPage schemas for business optimization."
+        
+        if score >= 80:
+            explanation += "Excellent context-aware SEO optimization!"
+        
+        return explanation
+    
     def _get_seo_relevance_explanation(self, schema_types: List[str], score: float) -> str:
-        """Get detailed explanation for SEO relevance score"""
+        """Get detailed explanation for SEO relevance score (legacy method)"""
         if not schema_types:
             return "No structured data found. Add SEO-critical schemas like Organization and WebSite to improve search rankings."
         
@@ -380,9 +663,40 @@ class StructuredDataAnalyzer:
         
         return explanation
     
+    def _generate_context_aware_recommendations(self, schema_types: List[str], coverage_score: float, 
+                                quality_score: float, completeness_score: float, website_type: str) -> List[str]:
+        """Generate context-aware actionable recommendations"""
+        recommendations = []
+        
+        # Get relevant schemas for this website type
+        type_config = self.website_type_schemas.get(website_type, self.website_type_schemas['general'])
+        relevant_schemas = type_config['relevant']
+        irrelevant_schemas = type_config['irrelevant']
+        
+        unique_types = set(schema_types)
+        missing_relevant = [schema for schema in relevant_schemas if schema not in unique_types]
+        irrelevant_found = [schema for schema in unique_types if schema in irrelevant_schemas]
+        
+        # Context-specific recommendations
+        if missing_relevant:
+            recommendations.append(f"Add {', '.join(missing_relevant[:2])} schemas for {website_type} optimization")
+        
+        if irrelevant_found:
+            recommendations.append(f"Remove irrelevant {', '.join(irrelevant_found)} schemas (not suitable for {website_type} websites)")
+        
+        # Quality recommendations
+        if quality_score < 70:
+            recommendations.append("Fix validation errors in existing schemas")
+        
+        # Coverage recommendations
+        if coverage_score < 50:
+            recommendations.append(f"Add more {website_type}-specific schemas to improve coverage")
+        
+        return recommendations
+    
     def _generate_recommendations(self, schema_types: List[str], coverage_score: float, 
                                 quality_score: float, completeness_score: float) -> List[str]:
-        """Generate actionable recommendations"""
+        """Generate actionable recommendations (legacy method)"""
         recommendations = []
         
         # Coverage recommendations

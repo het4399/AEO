@@ -40,3 +40,4 @@ dist/
 htmlcov/
 .pytest_cache//
 .env
+google-credentials.json
