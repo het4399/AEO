@@ -78,6 +78,21 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
     ((result as any).structured_data.coverage_score + (result as any).structured_data.quality_score + (result as any).structured_data.completeness_score) / 3
   ) : 0;
 
+  // Debug: log structured data details and Unknown entries to help diagnose RDFa types
+  try {
+    const sd: any = (result as any).structured_data;
+    if (sd && Array.isArray(sd.details)) {
+      // Full details (truncate in console)
+      // eslint-disable-next-line no-console
+      console.log('StructuredData.details:', sd.details);
+      const unknowns = sd.details.filter((d: any) => d && d.type === 'Unknown');
+      if (unknowns.length > 0) {
+        // eslint-disable-next-line no-console
+        console.log('StructuredData.details Unknown rows:', unknowns);
+      }
+    }
+  } catch {}
+
   // Calculate individual AI bot scores based on robots.txt checks
   const getAIBotScore = (botName: string) => {
     if (!(detailedAnalysis as any).ai_presence?.checks) {
@@ -498,6 +513,49 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
         </div>
       </div>
 
+      {/* Structured Data Details */}
+      {(result as any).structured_data?.details && (result as any).structured_data.details.length > 0 && (
+        <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+          <h3 className="text-xl font-bold text-gray-100 mb-4">Structured Data Details</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-300 border-b border-gray-700">
+                  <th className="py-2 pr-4">Type</th>
+                  <th className="py-2 pr-4">Format</th>
+                  <th className="py-2 pr-4">Valid</th>
+                  <th className="py-2 pr-4">Missing Required</th>
+                  <th className="py-2 pr-4">Eligible</th>
+                </tr>
+              </thead>
+              <tbody>
+                {((result as any).structured_data.details as any[]).slice(0, 25).map((row: any, idx: number) => (
+                  <tr key={idx} className="border-b border-gray-700">
+                    <td className="py-2 pr-4 text-gray-100">{row.type || 'Unknown'}</td>
+                    <td className="py-2 pr-4 text-gray-300">{row.format || '-'}</td>
+                    <td className="py-2 pr-4">
+                      <span className={`px-2 py-0.5 rounded text-xs ${row.valid ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+                        {row.valid ? 'Yes' : 'No'}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-4 text-gray-300">
+                      {Array.isArray(row.missing_required) && row.missing_required.length > 0
+                        ? row.missing_required.slice(0, 5).join(', ')
+                        : '-'}
+                    </td>
+                    <td className="py-2 pr-4">
+                      <span className={`px-2 py-0.5 rounded text-xs ${row.eligible ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-300'}`}>
+                        {row.eligible ? 'Eligible' : 'Review'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Recommendations */}
       {result.recommendations && result.recommendations.length > 0 && (
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
@@ -525,16 +583,39 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
               <h4 className="text-gray-200 font-semibold mb-2">Entities</h4>
               <div className="text-sm text-gray-300 space-y-2">
                 {Object.entries(((detailedAnalysis as any).knowledge_base.entities || {})).length > 0 ? (
-                  Object.entries(((detailedAnalysis as any).knowledge_base.entities || {})).map(([etype, list]: any, idx: number) => (
-                    <div key={idx}>
-                      <div className="text-gray-400 mb-1">{String(etype)}</div>
-                      <div className="flex flex-wrap gap-2">
-                        {(list as string[]).slice(0, 12).map((e: string, i: number) => (
-                          <span key={i} className="px-2 py-0.5 bg-gray-700 text-gray-200 rounded text-xs">{e}</span>
-                        ))}
+                  Object.entries(((detailedAnalysis as any).knowledge_base.entities || {})).map(([etype, list]: any, idx: number) => {
+                    const label = String(etype);
+                    const values = Array.isArray(list) ? (list as string[]) : [];
+                    const isQuantList = ['numbers', 'percentages', 'years', 'dates'].includes(label);
+                    // Clean values: remove overly long/noisy tokens
+                    const cleaned = values
+                      .filter((e) => typeof e === 'string')
+                      .map((e) => e.trim())
+                      .filter((e) => e.length >= 2 && e.length <= 60)
+                      .filter((e) => !/^https?:\/\//i.test(e))
+                      .filter((e) => !/\{\}|<|>|\(|\)/.test(e));
+                    const unique = Array.from(new Set(cleaned));
+                    return (
+                      <div key={idx}>
+                        <div className="text-gray-400 mb-1 flex items-center justify-between">
+                          <span>{label}</span>
+                          {isQuantList && (
+                            <span className="text-gray-300">{unique.length}</span>
+                          )}
+                        </div>
+                        {!isQuantList && (
+                          <div className="flex flex-wrap gap-2">
+                            {unique.slice(0, 12).map((e: string, i: number) => (
+                              <span key={i} className="px-2 py-0.5 bg-gray-700 text-gray-200 rounded text-xs">{e}</span>
+                            ))}
+                            {unique.length === 0 && (
+                              <span className="text-gray-500 text-xs">None</span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-gray-500">No entities detected.</div>
                 )}

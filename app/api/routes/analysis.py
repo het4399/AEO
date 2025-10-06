@@ -181,7 +181,8 @@ def analyze_structured_data():
                 'coverage_score': round(structured_data_metrics.coverage_score, 1),
                 'quality_score': round(structured_data_metrics.quality_score, 1),
                 'completeness_score': round(structured_data_metrics.completeness_score, 1),
-                'seo_relevance_score': round(structured_data_metrics.seo_relevance_score, 1)
+                'seo_relevance_score': round(structured_data_metrics.seo_relevance_score, 1),
+                'details': structured_data_metrics.details
             },
             'google_validation': {
                 'eligible_for_rich_results': google_validation.eligible_for_rich_results,
