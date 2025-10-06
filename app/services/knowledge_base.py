@@ -48,6 +48,52 @@ class KnowledgeBaseService:
         
         word_count = len(text.split())
         return (total_facts / word_count * 100) if word_count > 0 else 0
+
+    def _extract_facts(self, text: str) -> List[Dict[str, str]]:
+        """Extract candidate factual statements (simple heuristic).
+        Select sentences that contain numbers, dates, percentages, or fact indicators.
+        """
+        # Split into sentences crudely
+        sentences = re.split(r'[.!?]+\s+', text)
+        sentences = [s.strip() for s in sentences if s and len(s.strip()) > 0]
+
+        fact_triggers = [
+            r'\b\d+(?:,\d{3})*(?:\.\d+)?\b',
+            r'\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b',
+            r'\b(?:19|20)\d{2}\b',
+            r'\b\d+(?:\.\d+)?%\b',
+            r'\b(?:according to|studies show|research indicates|data shows)\b',
+        ]
+
+        # Terms that suggest JS/analytics/noise to skip
+        noise_patterns = [
+            r'\b(?:window|document|function|var|let|const|gtag|dataLayer|google-analytics|googletag)\b',
+            r'\b(?:jQuery|\$\(|owlCarousel|addEventListener|onclick|script)\b',
+            r'\bmailto:|@\w+\.\w+\b',
+            r'\{\s*\}|=>|<\/?\w+[^>]*>'
+        ]
+
+        facts: List[Dict[str, str]] = []
+        for s in sentences:
+            trigger_matched = None
+            for pat in fact_triggers:
+                if re.search(pat, s, re.IGNORECASE):
+                    trigger_matched = pat
+                    break
+            if trigger_matched:
+                # Skip if sentence looks like code/JS/noise
+                if any(re.search(pn, s, re.IGNORECASE) for pn in noise_patterns):
+                    continue
+                # Require some alphabetic content and a reasonable length
+                if not re.search(r'[A-Za-z]', s):
+                    continue
+                if len(s.split()) < 6:
+                    continue
+                facts.append({
+                    'statement': s[:300],  # cap length
+                    'trigger': trigger_matched
+                })
+        return facts[:50]
     
     def _assess_clarity(self, text: str) -> Dict[str, float]:
         """Assess content clarity metrics"""
@@ -117,8 +163,13 @@ class KnowledgeBaseService:
     def analyze_knowledge_base(self, url: str, html_content: str) -> Dict:
         """Analyze knowledge base quality and content structure"""
         try:
+            # Remove scripts/styles/noscript and comments first
+            cleaned = re.sub(r'<!--.*?-->', ' ', html_content, flags=re.DOTALL)
+            cleaned = re.sub(r'<script[\s\S]*?</script>', ' ', cleaned, flags=re.IGNORECASE)
+            cleaned = re.sub(r'<style[\s\S]*?</style>', ' ', cleaned, flags=re.IGNORECASE)
+            cleaned = re.sub(r'<noscript[\s\S]*?</noscript>', ' ', cleaned, flags=re.IGNORECASE)
             # Extract text content
-            text_content = re.sub(r'<[^>]+>', ' ', html_content)
+            text_content = re.sub(r'<[^>]+>', ' ', cleaned)
             text_content = re.sub(r'\s+', ' ', text_content).strip()
             
             if not text_content:
@@ -147,6 +198,9 @@ class KnowledgeBaseService:
             
             # Analyze format usage
             format_usage = self._analyze_format_usage(text_content)
+
+            # Extract factual statements
+            facts = self._extract_facts(text_content)
             
             # Calculate overall score
             score = 0
@@ -169,6 +223,7 @@ class KnowledgeBaseService:
             return {
                 'score': min(100, score),
                 'entities': entities,
+                'facts': facts,
                 'fact_density': fact_density,
                 'clarity': clarity_metrics,
                 'linkability': linkability_metrics,

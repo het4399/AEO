@@ -130,6 +130,39 @@ class AnswerabilityService:
         }
         
         return structures
+
+    def _extract_qa_pairs(self, html_content: str) -> List[Dict[str, str]]:
+        """Extract simple Q/A pairs from headings and following paragraphs."""
+        qa: List[Dict[str, str]] = []
+        try:
+            # Find question-like headings
+            question_heading_regex = r'<h[1-6][^>]*>(.*?)</h[1-6]>'
+            headings = re.findall(question_heading_regex, html_content, re.IGNORECASE | re.DOTALL)
+            # Split paragraphs
+            paragraphs = re.findall(r'<p[^>]*>(.*?)</p>', html_content, re.IGNORECASE | re.DOTALL)
+
+            # Heuristic: pair each question-like heading with the next paragraph if close
+            for h in headings:
+                h_text = re.sub(r'<[^>]+>', ' ', h)
+                h_text = re.sub(r'\s+', ' ', h_text).strip()
+                if not re.match(r'^(what|how|why|when|where|who|which|can|should|is|are|does|do|will|could|would)\b', h_text, re.IGNORECASE):
+                    continue
+                # Find a candidate answer
+                answer_text = ''
+                for p in paragraphs:
+                    pt = re.sub(r'<[^>]+>', ' ', p)
+                    pt = re.sub(r'\s+', ' ', pt).strip()
+                    if len(pt) > 20:
+                        answer_text = pt
+                        break
+                if h_text and answer_text:
+                    qa.append({
+                        'question': h_text[:200],
+                        'answer': answer_text[:400]
+                    })
+        except Exception:
+            pass
+        return qa[:50]
     
     def _assess_ai_crawler_points(self, html_content: str) -> Dict[str, int]:
         """Assess AI crawler specific points"""
@@ -176,6 +209,9 @@ class AnswerabilityService:
             
             # Assess AI crawler points
             ai_crawler_points = self._assess_ai_crawler_points(html_content)
+
+            # Extract Q/A pairs
+            qa_pairs = self._extract_qa_pairs(html_content)
             
             # Calculate answerability score
             score = 0
@@ -220,6 +256,7 @@ class AnswerabilityService:
                 'tone_analysis': tone_analysis,
                 'answer_structures': answer_structures,
                 'ai_crawler_points': ai_crawler_points,
+                'qa_pairs': qa_pairs,
                 'recommendations': recommendations
             }
             

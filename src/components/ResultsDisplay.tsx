@@ -515,6 +515,90 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
         </div>
       )}
 
+      {/* Knowledge Base Details */}
+      {(detailedAnalysis as any).knowledge_base && (
+        <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+          <h3 className="text-xl font-bold text-gray-100 mb-4">Knowledge Base Details</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Entities */}
+            <div>
+              <h4 className="text-gray-200 font-semibold mb-2">Entities</h4>
+              <div className="text-sm text-gray-300 space-y-2">
+                {Object.entries(((detailedAnalysis as any).knowledge_base.entities || {})).length > 0 ? (
+                  Object.entries(((detailedAnalysis as any).knowledge_base.entities || {})).map(([etype, list]: any, idx: number) => (
+                    <div key={idx}>
+                      <div className="text-gray-400 mb-1">{String(etype)}</div>
+                      <div className="flex flex-wrap gap-2">
+                        {(list as string[]).slice(0, 12).map((e: string, i: number) => (
+                          <span key={i} className="px-2 py-0.5 bg-gray-700 text-gray-200 rounded text-xs">{e}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-gray-500">No entities detected.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Facts */}
+            <div>
+              <h4 className="text-gray-200 font-semibold mb-2">Extracted Facts</h4>
+              <ul className="text-sm text-gray-300 space-y-2 list-disc list-inside">
+                {(((detailedAnalysis as any).knowledge_base.facts || []) as any[]).slice(0, 10).map((f: any, i: number) => (
+                  <li key={i}>
+                    <span className="text-gray-200">{f.statement || String(f)}</span>
+                  </li>
+                ))}
+                {(((detailedAnalysis as any).knowledge_base.facts || []) as any[]).length === 0 && (
+                  <li className="text-gray-500 list-none">No facts extracted.</li>
+                )}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Answerability Details */}
+      {(detailedAnalysis as any).answerability && (
+        <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+          <h3 className="text-xl font-bold text-gray-100 mb-4">Answerability Details</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Q/A pairs */}
+            <div>
+              <h4 className="text-gray-200 font-semibold mb-2">Q/A Pairs</h4>
+              <ul className="space-y-3">
+                {(((detailedAnalysis as any).answerability.qa_pairs || []) as any[]).slice(0, 8).map((qa: any, i: number) => (
+                  <li key={i} className="border border-gray-700 rounded p-3">
+                    <div className="text-gray-100 font-semibold mb-1">Q: {qa.question}</div>
+                    <div className="text-gray-300 text-sm">A: {qa.answer}</div>
+                  </li>
+                ))}
+                {(((detailedAnalysis as any).answerability.qa_pairs || []) as any[]).length === 0 && (
+                  <li className="text-gray-500 list-none">No Q/A pairs detected.</li>
+                )}
+              </ul>
+            </div>
+
+            {/* Structures summary */}
+            <div>
+              <h4 className="text-gray-200 font-semibold mb-2">Structures Summary</h4>
+              <div className="text-sm text-gray-300 space-y-1">
+                {Object.entries(((detailedAnalysis as any).answerability.answer_structures || {})).map(([k, v]: any, idx: number) => (
+                  <div key={idx} className="flex justify-between">
+                    <span className="text-gray-400">{String(k)}</span>
+                    <span className="text-gray-100 font-semibold">{String(v)}</span>
+                  </div>
+                ))}
+                {Object.keys(((detailedAnalysis as any).answerability.answer_structures || {})).length === 0 && (
+                  <div className="text-gray-500">No structures detected.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AI Presence Checklist */}
       {result.ai_presence && (
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
