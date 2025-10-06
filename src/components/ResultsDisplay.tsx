@@ -680,6 +680,113 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
         </div>
       )}
 
+      {/* Crawler Accessibility Details */}
+      {(detailedAnalysis as any).crawler_accessibility && (
+        <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+          <h3 className="text-xl font-bold text-gray-100 mb-4">Crawler Accessibility Details</h3>
+          {(() => {
+            const ca: any = (detailedAnalysis as any).crawler_accessibility;
+            const robots = ca.robots_analysis || {};
+            const aiBots = robots.ai_bot_access || {};
+            const delays = robots.crawl_delays || {};
+            const sitemaps = robots.sitemaps || [];
+            const sitemapStats = ca.sitemap_stats || {};
+            const renderability = (ca.content_structure && ca.content_structure.renderability) || {};
+            const blocked = robots.blocked_key_paths || {};
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-gray-200 font-semibold mb-2">Robots.txt (AI Bots)</h4>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-gray-300 border-b border-gray-700">
+                          <th className="py-2 pr-4">Agent</th>
+                          <th className="py-2 pr-4">Allowed</th>
+                          <th className="py-2 pr-4">Crawl-Delay</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.keys(aiBots).map((agent) => (
+                          <tr key={agent} className="border-b border-gray-700">
+                            <td className="py-2 pr-4 text-gray-100">{agent}</td>
+                            <td className="py-2 pr-4">
+                              <span className={`px-2 py-0.5 rounded text-xs ${aiBots[agent] ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+                                {aiBots[agent] ? 'Yes' : 'No'}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-4 text-gray-300">{delays[agent] ?? '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {Object.keys(blocked).length > 0 && (
+                    <div className="mt-4">
+                      <h5 className="text-gray-200 font-semibold mb-2">Blocked Key Paths</h5>
+                      <ul className="text-sm text-gray-300 space-y-1">
+                        {Object.entries(blocked).map(([path, agents]: any, i: number) => (
+                          <li key={i} className="flex items-center justify-between">
+                            <span className="text-gray-300">{path}</span>
+                            <span className="text-xs text-red-300">{Array.isArray(agents) ? agents.join(', ') : String(agents)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="text-gray-200 font-semibold mb-2">Sitemap & Renderability</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="bg-gray-700/40 rounded p-3">
+                      <div className="text-gray-400">Sitemaps Found</div>
+                      <div className="text-gray-100 font-semibold">{sitemaps.length}</div>
+                    </div>
+                    <div className="bg-gray-700/40 rounded p-3">
+                      <div className="text-gray-400">Sitemaps Fetched</div>
+                      <div className="text-gray-100 font-semibold">{sitemapStats.fetched ?? 0}</div>
+                    </div>
+                    <div className="bg-gray-700/40 rounded p-3">
+                      <div className="text-gray-400">URLs in Sitemap</div>
+                      <div className="text-gray-100 font-semibold">{sitemapStats.url_count ?? 0}</div>
+                    </div>
+                    <div className="bg-gray-700/40 rounded p-3">
+                      <div className="text-gray-400">Lastmod Coverage</div>
+                      <div className="text-gray-100 font-semibold">{sitemapStats.lastmod_coverage_pct ?? 0}%</div>
+                    </div>
+                    <div className="bg-gray-700/40 rounded p-3 col-span-2">
+                      <div className="text-gray-400">Images with Alt</div>
+                      <div className="text-gray-100 font-semibold">{renderability.images_alt_pct ?? 0}%</div>
+                    </div>
+                    <div className="bg-gray-700/40 rounded p-3">
+                      <div className="text-gray-400">Headings</div>
+                      <div className="text-gray-100 font-semibold">{renderability.headings_count ?? 0}</div>
+                    </div>
+                    <div className="bg-gray-700/40 rounded p-3">
+                      <div className="text-gray-400">Links</div>
+                      <div className="text-gray-100 font-semibold">{renderability.links_count ?? 0}</div>
+                    </div>
+                  </div>
+
+                  {sitemaps.length > 0 && (
+                    <div className="mt-4">
+                      <h5 className="text-gray-200 font-semibold mb-2">Sitemaps</h5>
+                      <ul className="text-xs text-blue-300 space-y-1 break-all">
+                        {sitemaps.slice(0, 5).map((sm: string, i: number) => (
+                          <li key={i}><a href={sm} target="_blank" rel="noreferrer" className="hover:text-blue-200">{sm}</a></li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* AI Presence Checklist */}
       {result.ai_presence && (
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
