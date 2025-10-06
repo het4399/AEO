@@ -10,3 +10,9 @@ Flask-CORS>=4.0.0
 
 # Enhanced analysis dependencies
 jsonschema>=4.17.0
+
+# Environment and configuration
+python-dotenv>=1.0.0
+
+# Type hints and validation
+typing-extensions>=4.0.0

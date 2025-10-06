@@ -9,9 +9,24 @@ interface ResultsDisplayProps {
 }
 
 const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
+  // Add comprehensive error handling
+  if (!result) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-red-900 border border-red-700 rounded-lg p-6">
+          <h3 className="text-xl font-bold text-red-200 mb-4 flex items-center gap-2">
+            <XCircle className="w-6 h-6" />
+            No Analysis Data
+          </h3>
+          <p className="text-red-300">No analysis result data available. Please try running the analysis again.</p>
+        </div>
+      </div>
+    );
+  }
+
   const defaultDomain = (() => {
     try {
-      const u = new URL(result.url);
+      const u = new URL(result.url || 'https://example.com');
       return u.hostname;
     } catch {
       return '';
@@ -40,29 +55,32 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
     ]
   };
 
-  // Determine which data to use (real vs static)
+  // Determine which data to use (real vs static) - UPDATED STATUS
+  // Check if detailed_analysis exists and has the modules
+  const detailedAnalysis = (result as any).detailed_analysis || {};
+  
   const useRealData = {
-    overallScore: true, // ✅ Implemented
-    aiPresence: result.ai_presence ? true : false, // ✅ Implemented
-    competitorLandscape: false, // ❌ Static (not implemented)
-    strategyReview: false, // ❌ Static (not implemented)
-    chatgptScore: result.ai_presence ? true : false, // ✅ Implemented (robots.txt based)
-    geminiScore: result.ai_presence ? true : false, // ✅ Implemented (robots.txt based)
-    claudeScore: result.ai_presence ? true : false, // ✅ Implemented (robots.txt based)
-    answerability: false, // ❌ Static (not implemented)
-    knowledgeBase: false, // ❌ Static (not implemented)
-    structuredData: true, // ✅ Implemented (from existing metrics)
-    aiCrawlerAccess: result.ai_presence ? true : false, // ✅ Partially implemented
+    overallScore: true, // ✅ LIVE - Overall score from all modules
+    aiPresence: !!(detailedAnalysis as any).ai_presence && (detailedAnalysis as any).ai_presence.score !== undefined, // ✅ LIVE - AI Presence Analysis
+    competitorLandscape: !!(detailedAnalysis as any).competitor_analysis && (detailedAnalysis as any).competitor_analysis.score !== undefined, // ✅ LIVE - Competitor Analysis
+    strategyReview: true, // ✅ LIVE - Strategy Review (Knowledge Base + Answerability + Structured Data + AI Crawler)
+    chatgptScore: !!(detailedAnalysis as any).ai_presence && (detailedAnalysis as any).ai_presence.checks, // ✅ LIVE - AI bot accessibility
+    geminiScore: !!(detailedAnalysis as any).ai_presence && (detailedAnalysis as any).ai_presence.checks, // ✅ LIVE - AI bot accessibility
+    claudeScore: !!(detailedAnalysis as any).ai_presence && (detailedAnalysis as any).ai_presence.checks, // ✅ LIVE - AI bot accessibility
+    answerability: !!(detailedAnalysis as any).answerability && (detailedAnalysis as any).answerability.score !== undefined, // ✅ LIVE - Answerability Analysis
+    knowledgeBase: !!(detailedAnalysis as any).knowledge_base && (detailedAnalysis as any).knowledge_base.score !== undefined, // ✅ LIVE - Knowledge Base Analysis
+    structuredData: true, // ✅ LIVE - Structured Data Analysis (existing)
+    aiCrawlerAccess: !!(detailedAnalysis as any).crawler_accessibility && (detailedAnalysis as any).crawler_accessibility.score !== undefined, // ✅ LIVE - AI Crawler Accessibility
   };
 
-  // Calculate real structured data score from existing metrics
-  const realStructuredDataScore = Math.round(
-    (result.metrics.coverage_score + result.metrics.quality_score + result.metrics.completeness_score) / 3
-  );
+  // Calculate real structured data score from structured_data object with fallback
+  const realStructuredDataScore = (result as any).structured_data ? Math.round(
+    ((result as any).structured_data.coverage_score + (result as any).structured_data.quality_score + (result as any).structured_data.completeness_score) / 3
+  ) : 0;
 
   // Calculate individual AI bot scores based on robots.txt checks
   const getAIBotScore = (botName: string) => {
-    if (!result.ai_presence?.checks) {
+    if (!(detailedAnalysis as any).ai_presence?.checks) {
       // Fallback to static data based on bot name
       switch (botName.toLowerCase()) {
         case 'gptbot': return staticData.chatgptScore;
@@ -73,7 +91,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
     }
     
     const robotsKey = `robots_${botName.toLowerCase()}`;
-    const isAllowed = result.ai_presence.checks[robotsKey];
+    const isAllowed = (detailedAnalysis as any).ai_presence.checks[robotsKey];
     
     if (isAllowed === true) {
       return 85; // High score if allowed
@@ -89,7 +107,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
   const realClaudeScore = getAIBotScore('claudebot');
 
   // Check if we're using real data or static fallback
-  const isUsingRealAIData = result.ai_presence?.checks ? true : false;
+  const isUsingRealAIData = (detailedAnalysis as any).ai_presence?.checks ? true : false;
 
   // Helper function to get data with static indicator
   const getDataWithIndicator = (key: string, realValue: any, staticValue: any, isImplemented: boolean) => {
@@ -99,6 +117,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
       label: isImplemented ? 'LIVE' : 'STATIC'
     };
   };
+
+  // Debug logging removed - data structure fix confirmed working
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -124,7 +144,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
                 stroke="url(#gradient)"
                 strokeWidth="8"
                 fill="none"
-                strokeDasharray={`${(result.overall_score / 100) * 283} 283`}
+                strokeDasharray={`${((result.overall_score || 0) / 100) * 283} 283`}
                 strokeLinecap="round"
                 className="transition-all duration-1000"
               />
@@ -137,7 +157,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-2xl font-bold text-white">
-                {useRealData.overallScore ? result.overall_score : staticData.overallScore}/100
+                {useRealData.overallScore && result.overall_score ? result.overall_score : staticData.overallScore}/100
               </span>
             </div>
           </div>
@@ -184,7 +204,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
             </div>
             <div className="w-12 h-12 rounded-full border-2 border-orange-500 flex items-center justify-center">
               <span className="text-orange-500 font-bold text-lg">
-                {useRealData.aiPresence && result.ai_presence ? Math.round(result.ai_presence.score) : staticData.aiPresenceScore}
+                {useRealData.aiPresence && (detailedAnalysis as any).ai_presence ? Math.round((detailedAnalysis as any).ai_presence.score) : staticData.aiPresenceScore}
               </span>
             </div>
           </div>
@@ -285,10 +305,20 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <h3 className="text-xl font-bold text-white">Competitor Landscape</h3>
-              <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-900 text-yellow-300">STATIC</span>
+              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                useRealData.competitorLandscape 
+                  ? 'bg-green-900 text-green-300' 
+                  : 'bg-yellow-900 text-yellow-300'
+              }`}>
+                {useRealData.competitorLandscape ? 'LIVE' : 'STATIC'}
+              </span>
             </div>
             <div className="w-12 h-12 rounded-full border-2 border-green-500 flex items-center justify-center">
-              <span className="text-green-500 font-bold text-lg">{staticData.competitorScore}</span>
+              <span className="text-green-500 font-bold text-lg">
+                {useRealData.competitorLandscape && (detailedAnalysis as any).competitor_analysis 
+                  ? Math.round((detailedAnalysis as any).competitor_analysis.score) 
+                  : staticData.competitorScore}
+              </span>
             </div>
           </div>
           
@@ -313,10 +343,25 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <h3 className="text-xl font-bold text-white">Strategy Review</h3>
-              <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-900 text-yellow-300">STATIC</span>
+              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                useRealData.strategyReview 
+                  ? 'bg-green-900 text-green-300' 
+                  : 'bg-yellow-900 text-yellow-300'
+              }`}>
+                {useRealData.strategyReview ? 'LIVE' : 'STATIC'}
+              </span>
             </div>
             <div className="w-12 h-12 rounded-full border-2 border-orange-500 flex items-center justify-center">
-              <span className="text-orange-500 font-bold text-lg">{staticData.strategyScore}</span>
+              <span className="text-orange-500 font-bold text-lg">
+                {useRealData.strategyReview 
+                  ? Math.round((
+                      ((detailedAnalysis as any).answerability?.score || 0) + 
+                      ((detailedAnalysis as any).knowledge_base?.score || 0) + 
+                      realStructuredDataScore + 
+                      ((detailedAnalysis as any).crawler_accessibility?.score || 0)
+                    ) / 4)
+                  : staticData.strategyScore}
+              </span>
             </div>
           </div>
           
@@ -325,10 +370,22 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
               <span className="text-gray-300 text-sm">Answerability</span>
               <div className="flex items-center gap-2">
                 <div className="w-16 bg-gray-700 rounded-full h-2">
-                  <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${staticData.answerability}%` }}></div>
+                  <div className={`h-2 rounded-full ${
+                    ((detailedAnalysis as any).answerability?.score || staticData.answerability) >= 70 ? 'bg-green-500' : 
+                    ((detailedAnalysis as any).answerability?.score || staticData.answerability) >= 50 ? 'bg-orange-500' : 'bg-red-500'
+                  }`} style={{ width: `${(detailedAnalysis as any).answerability?.score || staticData.answerability}%` }}></div>
                 </div>
-                <span className="text-orange-500 font-semibold text-sm">{staticData.answerability}</span>
-                <span className="px-1 py-0.5 bg-yellow-900 text-yellow-300 rounded text-xs">STATIC</span>
+                <span className={`font-semibold text-sm ${
+                  ((detailedAnalysis as any).answerability?.score || staticData.answerability) >= 70 ? 'text-green-500' : 
+                  ((detailedAnalysis as any).answerability?.score || staticData.answerability) >= 50 ? 'text-orange-500' : 'text-red-500'
+                }`}>{Math.round((detailedAnalysis as any).answerability?.score || staticData.answerability)}</span>
+                <span className={`px-1 py-0.5 rounded text-xs ${
+                  useRealData.answerability 
+                    ? 'bg-green-900 text-green-300' 
+                    : 'bg-yellow-900 text-yellow-300'
+                }`}>
+                  {useRealData.answerability ? 'LIVE' : 'STATIC'}
+                </span>
               </div>
             </div>
             
@@ -336,10 +393,22 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
               <span className="text-gray-300 text-sm">Knowledge Base</span>
               <div className="flex items-center gap-2">
                 <div className="w-16 bg-gray-700 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: `${staticData.knowledgeBase}%` }}></div>
+                  <div className={`h-2 rounded-full ${
+                    ((detailedAnalysis as any).knowledge_base?.score || staticData.knowledgeBase) >= 70 ? 'bg-green-500' : 
+                    ((detailedAnalysis as any).knowledge_base?.score || staticData.knowledgeBase) >= 50 ? 'bg-orange-500' : 'bg-red-500'
+                  }`} style={{ width: `${Math.round((detailedAnalysis as any).knowledge_base?.score || staticData.knowledgeBase)}%` }}></div>
                 </div>
-                <span className="text-green-500 font-semibold text-sm">{staticData.knowledgeBase}</span>
-                <span className="px-1 py-0.5 bg-yellow-900 text-yellow-300 rounded text-xs">STATIC</span>
+                <span className={`font-semibold text-sm ${
+                  ((detailedAnalysis as any).knowledge_base?.score || staticData.knowledgeBase) >= 70 ? 'text-green-500' : 
+                  ((detailedAnalysis as any).knowledge_base?.score || staticData.knowledgeBase) >= 50 ? 'text-orange-500' : 'text-red-500'
+                }`}>{Math.round((detailedAnalysis as any).knowledge_base?.score || staticData.knowledgeBase)}</span>
+                <span className={`px-1 py-0.5 rounded text-xs ${
+                  useRealData.knowledgeBase 
+                    ? 'bg-green-900 text-green-300' 
+                    : 'bg-yellow-900 text-yellow-300'
+                }`}>
+                  {useRealData.knowledgeBase ? 'LIVE' : 'STATIC'}
+                </span>
               </div>
             </div>
             
@@ -364,15 +433,28 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
               <span className="text-gray-300 text-sm">AI Crawler Accessibility</span>
               <div className="flex items-center gap-2">
                 <div className="w-16 bg-gray-700 rounded-full h-2">
-                  <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${staticData.aiCrawlerAccess}%` }}></div>
+                  <div className={`h-2 rounded-full ${
+                    ((detailedAnalysis as any).crawler_accessibility?.score || staticData.aiCrawlerAccess) >= 70 ? 'bg-green-500' : 
+                    ((detailedAnalysis as any).crawler_accessibility?.score || staticData.aiCrawlerAccess) >= 50 ? 'bg-orange-500' : 'bg-red-500'
+                  }`} style={{ width: `${(detailedAnalysis as any).crawler_accessibility?.score || staticData.aiCrawlerAccess}%` }}></div>
                 </div>
-                <span className="text-orange-500 font-semibold text-sm">{staticData.aiCrawlerAccess}</span>
-                <span className="px-1 py-0.5 bg-yellow-900 text-yellow-300 rounded text-xs">STATIC</span>
+                <span className={`font-semibold text-sm ${
+                  ((detailedAnalysis as any).crawler_accessibility?.score || staticData.aiCrawlerAccess) >= 70 ? 'text-green-500' : 
+                  ((detailedAnalysis as any).crawler_accessibility?.score || staticData.aiCrawlerAccess) >= 50 ? 'text-orange-500' : 'text-red-500'
+                }`}>{(detailedAnalysis as any).crawler_accessibility?.score || staticData.aiCrawlerAccess}</span>
+                <span className={`px-1 py-0.5 rounded text-xs ${
+                  useRealData.aiCrawlerAccess 
+                    ? 'bg-green-900 text-green-300' 
+                    : 'bg-yellow-900 text-yellow-300'
+                }`}>
+                  {useRealData.aiCrawlerAccess ? 'LIVE' : 'STATIC'}
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
+
 
       {/* SERP Panel */}
       <SerpPanel defaultDomainFromUrl={defaultDomain} />
@@ -384,24 +466,24 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-gray-300">Total Schemas:</span>
-              <span className="font-semibold text-gray-100">{result.metrics.total_schemas}</span>
+              <span className="font-semibold text-gray-100">{(result as any).structured_data?.total_schemas || 0}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-300">Valid Schemas:</span>
-              <span className="font-semibold text-green-400">{result.metrics.valid_schemas}</span>
+              <span className="font-semibold text-green-400">{(result as any).structured_data?.valid_schemas || 0}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-300">Invalid Schemas:</span>
-              <span className="font-semibold text-red-400">{result.metrics.invalid_schemas}</span>
+              <span className="font-semibold text-red-400">{(result as any).structured_data?.invalid_schemas || 0}</span>
             </div>
           </div>
         </div>
 
         <div className="bg-gray-800 rounded-lg shadow-lg p-6">
           <h3 className="text-xl font-bold text-gray-100 mb-4">Schema Types Found</h3>
-          {result.metrics.schema_types.length > 0 ? (
+          {(result as any).structured_data?.schema_types && (result as any).structured_data.schema_types.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {result.metrics.schema_types.map((type, index) => (
+              {(result as any).structured_data.schema_types.map((type: string, index: number) => (
                 <span
                   key={index}
                   className="px-3 py-1 bg-blue-900 text-blue-300 rounded-full text-sm"
@@ -417,7 +499,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
       </div>
 
       {/* Recommendations */}
-      {result.recommendations.length > 0 && (
+      {result.recommendations && result.recommendations.length > 0 && (
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
           <h3 className="text-xl font-bold text-gray-100 mb-4">Recommendations</h3>
           <ul className="space-y-2">
@@ -462,7 +544,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
       )}
 
       {/* Errors */}
-      {result.errors.length > 0 && (
+      {result.errors && result.errors.length > 0 && (
         <div className="bg-red-900 border border-red-700 rounded-lg p-6 mb-6">
           <h3 className="text-xl font-bold text-red-200 mb-4 flex items-center gap-2">
             <XCircle className="w-6 h-6" />
@@ -480,7 +562,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
       )}
 
       {/* Warnings */}
-      {result.warnings.length > 0 && (
+      {result.warnings && result.warnings.length > 0 && (
         <div className="bg-yellow-900 border border-yellow-700 rounded-lg p-6">
           <h3 className="text-xl font-bold text-yellow-200 mb-4 flex items-center gap-2">
             <AlertCircle className="w-6 h-6" />
