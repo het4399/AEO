@@ -17,6 +17,15 @@ export interface AnalysisExplanations {
   seo_relevance_explanation: string;
 }
 
+export interface AIPresence {
+  score: number;
+  explanation: string;
+  checks: {
+    [key: string]: string | number | boolean;
+  };
+  recommendations: string[];
+}
+
 export interface GoogleValidation {
   eligible_for_rich_results: boolean;
   rich_results_types: string[];
@@ -34,6 +43,7 @@ export interface AnalysisResult {
   overall_score: number;
   metrics: AnalysisMetrics;
   explanations: AnalysisExplanations;
+  ai_presence?: AIPresence;
   google_validation: GoogleValidation;
   errors: string[];
   warnings: string[];

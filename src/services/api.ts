@@ -53,6 +53,21 @@ class ApiService {
     }
   }
 
+  async serpLookup(params: { q: string; location?: string; device?: string; gl?: string; hl?: string; num?: number; start?: number; domain?: string; }): Promise<any> {
+    try {
+      const response = await axios.post(`${this.baseURL}/serp`, params, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
+      });
+      if (response.data && response.data.success) return response.data;
+      throw new Error(response.data?.error || 'SERP lookup failed');
+    } catch (error: any) {
+      if (error.response?.data?.error) throw new Error(error.response.data.error);
+      if (error.message) throw new Error(error.message);
+      throw new Error('SERP lookup failed');
+    }
+  }
+
   async healthCheck(): Promise<{ status: string; service: string }> {
     try {
       console.log(`Making health check to: ${this.baseURL}/health`);
