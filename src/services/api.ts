@@ -68,6 +68,16 @@ class ApiService {
     }
   }
 
+  async listRuns(limit: number = 20): Promise<any> {
+    const resp = await axios.get(`${this.baseURL}/runs?limit=${limit}`, { timeout: 15000 });
+    return resp.data;
+  }
+
+  async getRun(runId: string): Promise<any> {
+    const resp = await axios.get(`${this.baseURL}/runs/${runId}`, { timeout: 15000 });
+    return resp.data;
+  }
+
   async healthCheck(): Promise<{ status: string; service: string }> {
     try {
       console.log(`Making health check to: ${this.baseURL}/health`);

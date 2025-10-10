@@ -141,7 +141,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
       <div className="bg-gray-800 rounded-xl shadow-lg p-8 mb-8">
         <div className="flex items-center gap-8">
           {/* Circular Progress */}
-          <div className="relative w-32 h-32">
+          <div className="relative w-32 h-32" title={`Overall score is a weighted average of AI Presence, Competitor Landscape, and Strategy Review. Weights: ${JSON.stringify((result as any).module_weights || { ai_presence: 1/3, competitor: 1/3, strategy_review: 1/3 })}`}>
             <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
               <circle
                 cx="50"
@@ -357,7 +357,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
         <div className="bg-gray-800 rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <h3 className="text-xl font-bold text-white">Strategy Review</h3>
+              <h3 className="text-xl font-bold text-white" title="Strategy Review is the average of Knowledge Base, Answerability, Structured Data composite, and Crawler Accessibility scores.">Strategy Review</h3>
               <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                 useRealData.strategyReview 
                   ? 'bg-green-900 text-green-300' 
@@ -470,6 +470,9 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
         </div>
       </div>
 
+
+      {/* Export */}
+      <ExportPanel result={result} />
 
       {/* SERP Panel */}
       <SerpPanel defaultDomainFromUrl={defaultDomain} />
@@ -850,8 +853,160 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
           </ul>
         </div>
       )}
+
+      {/* Recent Analyses - removed by request */}
     </div>
   );
 };
 
 export default ResultsDisplay;
+
+// Lightweight recent analyses panel
+const RecentAnalysesPanel: React.FC = () => {
+  const [items, setItems] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState<boolean>(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const mod = await import('../services/api');
+        const data = await mod.apiService.listRuns(10);
+        if (mounted) setItems(Array.isArray(data.items) ? data.items : []);
+      } catch (e: any) {
+        if (mounted) setError(e?.message || 'Failed to load recent runs');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  return (
+    <div className="bg-gray-800 rounded-lg shadow-lg p-6 mt-6">
+      <h3 className="text-xl font-bold text-gray-100 mb-4">Recent Analyses</h3>
+      {loading && <div className="text-gray-400">Loading…</div>}
+      {error && <div className="text-red-400">{error}</div>}
+      {!loading && !error && (
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-300 border-b border-gray-700">
+                <th className="py-2 pr-4">Date</th>
+                <th className="py-2 pr-4">URL</th>
+                <th className="py-2 pr-4">Score</th>
+                <th className="py-2 pr-4">Grade</th>
+                <th className="py-2 pr-4">Run</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((r: any, idx: number) => (
+                <tr key={r.id || idx} className="border-b border-gray-700">
+                  <td className="py-2 pr-4 text-gray-300">{r.created_at || '-'}</td>
+                  <td className="py-2 pr-4 text-blue-300 break-all">{r.url || '-'}</td>
+                  <td className="py-2 pr-4 text-gray-100">{r.overall_score ?? '-'}</td>
+                  <td className="py-2 pr-4 text-gray-100">{r.grade ?? '-'}</td>
+                  <td className="py-2 pr-4">
+                    <LoadRunButton runId={r.id} />
+                  </td>
+                </tr>
+              ))}
+              {items.length === 0 && (
+                <tr><td className="py-2 text-gray-500" colSpan={5}>No runs yet</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const LoadRunButton: React.FC<{ runId?: string }> = ({ runId }) => {
+  const [loading, setLoading] = React.useState<boolean>(false);
+  if (!runId) return <span className="text-gray-500">—</span>;
+  return (
+    <button
+      className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded text-xs"
+      onClick={async () => {
+        try {
+          setLoading(true);
+          const mod = await import('../services/api');
+          const data = await mod.apiService.getRun(runId);
+          const response = data?.response;
+          if (response) {
+            // Replace current page state by dispatching a custom event consumed by App if needed.
+            // For simplicity, open JSON in a new window.
+            const blob = new Blob([JSON.stringify(response, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+          }
+        } catch (e) {
+        } finally {
+          setLoading(false);
+        }
+      }}
+      disabled={loading}
+    >
+      {loading ? 'Loading…' : 'View'}
+    </button>
+  );
+};
+
+// Export panel for current analysis
+export const ExportPanel: React.FC<{ result: any }> = ({ result }) => {
+  const download = (data: string, filename: string, type: string) => {
+    const blob = new Blob([data], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const toCSV = (): string => {
+    const da: any = (result as any).detailed_analysis || {};
+    const sd: any = (result as any).structured_data || {};
+    const row = {
+      url: result.url,
+      overall_score: result.overall_score,
+      grade: result.grade,
+      ai_presence: da.ai_presence?.score ?? '',
+      competitor_analysis: da.competitor_analysis?.score ?? '',
+      knowledge_base: da.knowledge_base?.score ?? '',
+      answerability: da.answerability?.score ?? '',
+      crawler_accessibility: da.crawler_accessibility?.score ?? '',
+      structured_data_composite: Math.round(((sd.coverage_score || 0) + (sd.quality_score || 0) + (sd.completeness_score || 0)) / 3),
+      analysis_timestamp: (result as any).analysis_timestamp || ''
+    } as Record<string, any>;
+    const headers = Object.keys(row);
+    const values = headers.map(h => String(row[h]).replace(/"/g, '""'));
+    return headers.join(',') + '\n' + values.map(v => /[,\n\"]/.test(v) ? `"${v}"` : v).join(',');
+  };
+
+  return (
+    <div className="bg-gray-800 rounded-lg shadow-lg p-4 mb-6">
+      <h3 className="text-lg font-bold text-gray-100 mb-3">Export</h3>
+      <div className="flex gap-3">
+        <button
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded text-sm"
+          onClick={() => download(JSON.stringify(result, null, 2), 'analysis.json', 'application/json')}
+        >
+          Download JSON
+        </button>
+        <button
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded text-sm"
+          onClick={() => download(toCSV(), 'analysis.csv', 'text/csv')}
+        >
+          Download CSV
+        </button>
+      </div>
+    </div>
+  );
+};

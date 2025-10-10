@@ -4,6 +4,8 @@ Main analysis endpoint for AEOCHECKER
 """
 
 from flask import Blueprint, request, jsonify
+import uuid
+from datetime import datetime
 import logging
 from app.services.ai_presence import AIPresenceService
 from app.services.competitor_analysis import CompetitorAnalysisService
@@ -12,6 +14,7 @@ from app.services.answerability import AnswerabilityService
 from app.services.crawler_accessibility import CrawlerAccessibilityService
 from structured_data_analyzer import StructuredDataAnalyzer
 from google_rich_results_validator import GoogleRichResultsValidator
+from app.config import Config
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -29,6 +32,10 @@ crawler_accessibility_service = CrawlerAccessibilityService()
 # Initialize existing analyzers
 structured_data_analyzer = StructuredDataAnalyzer()
 google_validator = GoogleRichResultsValidator()
+
+# In-memory run history (Phase 5 - lightweight)
+RUN_HISTORY = []  # list of dicts {id, url, created_at, response}
+MAX_HISTORY = 100
 
 @analysis_bp.route('/analyze', methods=['POST'])
 def analyze_structured_data():
@@ -121,16 +128,33 @@ def analyze_structured_data():
             float(structured_data_avg)
         ) / 4.0
 
-        # Calculate overall AEOCHECKER score from three main modules
-        # 1) AI Presence, 2) Competitor Landscape, 3) Strategy Review
-        three_main_scores = [
+        # Calculate weighted overall score (env-configurable weights)
+        def _apply_weights(ai_presence_score: float, competitor_score: float, strategy_review_score: float):
+            import json
+            weights = {'ai_presence': 1/3, 'competitor': 1/3, 'strategy_review': 1/3}
+            try:
+                if Config.AEO_WEIGHTS_JSON:
+                    parsed = json.loads(Config.AEO_WEIGHTS_JSON)
+                    for k in ['ai_presence', 'competitor', 'strategy_review']:
+                        if isinstance(parsed.get(k), (int, float)):
+                            weights[k] = float(parsed[k])
+                    total = sum(weights.values()) or 1.0
+                    for k in weights:
+                        weights[k] = weights[k] / total
+            except Exception:
+                pass
+            score = (
+                ai_presence_score * weights['ai_presence'] +
+                competitor_score * weights['competitor'] +
+                strategy_review_score * weights['strategy_review']
+            )
+            return score, weights
+
+        overall_score, weights_used = _apply_weights(
             float(ai_presence.get('score', 0)),
             float(results['competitor_analysis'].get('score', 0)),
             float(strategy_review_score)
-        ]
-
-        # Include zero scores (count all three modules equally)
-        overall_score = sum(three_main_scores) / len(three_main_scores) if three_main_scores else 0
+        )
         
         # Determine grade
         if overall_score >= 90:
@@ -172,6 +196,7 @@ def analyze_structured_data():
                 'answerability': answerability.get('score', 0),
                 'crawler_accessibility': crawler_accessibility.get('score', 0)
             },
+            'module_weights': weights_used,
             'detailed_analysis': results,
             'structured_data': {
                 'total_schemas': structured_data_metrics.total_schemas,
@@ -193,10 +218,28 @@ def analyze_structured_data():
                 'recommendations': google_validation.recommendations
             },
             'all_recommendations': all_recommendations,
-            'analysis_timestamp': str(logger.info("Analysis completed"))
+            'analysis_timestamp': datetime.utcnow().isoformat() + 'Z'
         }
         
         logger.info(f"AEOCHECKER analysis completed for {url} with overall score: {overall_score}")
+        # Save to in-memory history
+        try:
+            run_id = str(uuid.uuid4())
+            history_entry = {
+                'id': run_id,
+                'url': url,
+                'created_at': datetime.utcnow().isoformat() + 'Z',
+                'response': response
+            }
+            RUN_HISTORY.insert(0, history_entry)
+            # Cap history size
+            if len(RUN_HISTORY) > MAX_HISTORY:
+                del RUN_HISTORY[MAX_HISTORY:]
+            # Echo id in response
+            response['run_id'] = run_id
+        except Exception:
+            pass
+
         return jsonify(response)
         
     except Exception as e:
@@ -205,3 +248,32 @@ def analyze_structured_data():
             'success': False,
             'error': f'AEOCHECKER analysis failed: {str(e)}'
         }), 500
+
+
+@analysis_bp.route('/runs', methods=['GET'])
+def list_runs():
+    """List recent analysis runs (lightweight in-memory)."""
+    try:
+        limit = int(request.args.get('limit', '20'))
+    except Exception:
+        limit = 20
+    items = [
+        {
+            'id': r.get('id'),
+            'url': r.get('url'),
+            'created_at': r.get('created_at'),
+            'overall_score': r.get('response', {}).get('overall_score'),
+            'grade': r.get('response', {}).get('grade')
+        }
+        for r in RUN_HISTORY[:max(1, min(limit, 100))]
+    ]
+    return jsonify({'items': items})
+
+
+@analysis_bp.route('/runs/<run_id>', methods=['GET'])
+def get_run(run_id: str):
+    """Get a specific analysis run by id (in-memory)."""
+    for r in RUN_HISTORY:
+        if r.get('id') == run_id:
+            return jsonify(r)
+    return jsonify({'error': 'Not found'}), 404

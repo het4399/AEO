@@ -20,6 +20,9 @@ class Config:
     # Analysis settings
     MAX_COMPETITORS = int(os.environ.get('MAX_COMPETITORS', '5'))
     REQUEST_TIMEOUT = int(os.environ.get('REQUEST_TIMEOUT', '10'))
+
+    # Weights
+    AEO_WEIGHTS_JSON = os.environ.get('AEO_WEIGHTS_JSON', '')
     
     # AI Bot agents for analysis
     AI_BOT_AGENTS = [
