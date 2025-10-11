@@ -137,6 +137,7 @@ class AIPresenceService:
                 major_count += 1
             if 'wikidata.org' in host or 'wikipedia.org' in host:
                 checks['sameas_wikidata_or_wikipedia'] = True
+                print(f"🎯 Wikipedia/Wikidata detected in sameAs: {link} -> Awarding 20 points")
         
         checks['sameas_major_profiles_count'] = major_count
 
