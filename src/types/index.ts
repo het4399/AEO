@@ -163,14 +163,6 @@ export interface CrawlerAccessibility {
   recommendations: string[];
 }
 
-export interface GoogleValidation {
-  eligible_for_rich_results: boolean;
-  rich_results_types: string[];
-  google_score: number;
-  errors: string[];
-  warnings: string[];
-  recommendations: string[];
-}
 
 export interface AnalysisResult {
   success: boolean;
@@ -185,7 +177,6 @@ export interface AnalysisResult {
   knowledge_base?: KnowledgeBase;
   answerability?: Answerability;
   crawler_accessibility?: CrawlerAccessibility;
-  google_validation: GoogleValidation;
   errors: string[];
   warnings: string[];
   recommendations: string[];

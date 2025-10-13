@@ -1,3 +1,8 @@
+"""
+Structured Data Analysis Service for AEOCHECKER
+Comprehensive structured data analyzer for AI Search Engine Optimization
+"""
+
 import requests
 import extruct
 import json
@@ -9,7 +14,6 @@ from w3lib.html import get_base_url
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -941,15 +945,3 @@ class StructuredDataAnalyzer:
                 report += f"{i}. {rec}\n"
         
         return report
-
-# Example usage and testing
-if __name__ == "__main__":
-    analyzer = StructuredDataAnalyzer()
-    
-    # Test with a sample URL
-    test_url = "https://yogreet.com"
-    print(f"Analyzing structured data for: {test_url}")
-    
-    metrics = analyzer.analyze_url(test_url)
-    report = analyzer.generate_report(metrics, test_url)
-    print(report)

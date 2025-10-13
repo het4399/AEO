@@ -12,8 +12,7 @@ from app.services.competitor_analysis import CompetitorAnalysisService
 from app.services.knowledge_base import KnowledgeBaseService
 from app.services.answerability import AnswerabilityService
 from app.services.crawler_accessibility import CrawlerAccessibilityService
-from structured_data_analyzer import StructuredDataAnalyzer
-from google_rich_results_validator import GoogleRichResultsValidator
+from app.services.structured_data import StructuredDataAnalyzer
 from app.config import Config
 
 # Configure logging
@@ -31,7 +30,6 @@ crawler_accessibility_service = CrawlerAccessibilityService()
 
 # Initialize existing analyzers
 structured_data_analyzer = StructuredDataAnalyzer()
-google_validator = GoogleRichResultsValidator()
 
 # In-memory run history (Phase 5 - lightweight)
 RUN_HISTORY = []  # list of dicts {id, url, created_at, response}
@@ -107,7 +105,6 @@ def analyze_structured_data():
         # 6. Existing Structured Data Analysis
         logger.info("Running Structured Data analysis...")
         structured_data_metrics = structured_data_analyzer.analyze_url(url)
-        google_validation = google_validator.validate_url(url)
         
         # Calculate Strategy Review as composite of KB + Answerability + Crawler + Structured Data
         structured_data_avg = 0
@@ -208,14 +205,6 @@ def analyze_structured_data():
                 'completeness_score': round(structured_data_metrics.completeness_score, 1),
                 'seo_relevance_score': round(structured_data_metrics.seo_relevance_score, 1),
                 'details': structured_data_metrics.details
-            },
-            'google_validation': {
-                'eligible_for_rich_results': google_validation.eligible_for_rich_results,
-                'rich_results_types': google_validation.rich_results_types,
-                'google_score': google_validation.google_score,
-                'errors': google_validation.errors,
-                'warnings': google_validation.warnings,
-                'recommendations': google_validation.recommendations
             },
             'all_recommendations': all_recommendations,
             'analysis_timestamp': datetime.utcnow().isoformat() + 'Z'

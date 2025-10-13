@@ -46,7 +46,6 @@ def status_check():
         },
         'dependencies': {
             'structured_data_analyzer': 'active',
-            'google_rich_results_validator': 'active',
             'serpapi': 'active'
         }
     })
