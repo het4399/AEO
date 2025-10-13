@@ -137,6 +137,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
 
   // Toggle to show/hide deep detail sections via env var (CRA): REACT_APP_SHOW_DETAIL_SECTIONS=true|false
   const showDetailSections = String(process.env.REACT_APP_SHOW_DETAIL_SECTIONS || '').toLowerCase() === 'true';
+  const crawlerEnabled = String(process.env.REACT_APP_CRAWLER_ENABLED || '').toLowerCase() === 'true';
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -471,6 +472,40 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
             </div>
           </div>
         </div>
+
+        {/* Crawl Status (placeholder UI) */}
+        {crawlerEnabled && (
+          <div className="bg-gray-800 rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <h3 className="text-xl font-bold text-white">Crawl</h3>
+                <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-900 text-yellow-300">PREVIEW</span>
+              </div>
+              <div className="w-12 h-12 rounded-full border-2 border-blue-500 flex items-center justify-center">
+                <span className="text-blue-500 font-bold text-lg">—</span>
+              </div>
+            </div>
+            <p className="text-gray-300 text-sm mb-3">Submit and track crawl jobs here. This is a UI-only preview; backend integration will be added.</p>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <div className="text-gray-400">Status</div>
+                <div className="text-gray-100 font-semibold">Not started</div>
+              </div>
+              <div>
+                <div className="text-gray-400">Progress</div>
+                <div className="text-gray-100 font-semibold">0 / 0 pages</div>
+              </div>
+              <div>
+                <div className="text-gray-400">Avg Response</div>
+                <div className="text-gray-100 font-semibold">— ms</div>
+              </div>
+              <div>
+                <div className="text-gray-400">Total Pages</div>
+                <div className="text-gray-100 font-semibold">—</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
 
