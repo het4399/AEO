@@ -135,6 +135,9 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
 
   // Debug logging removed - data structure fix confirmed working
 
+  // Toggle to show/hide deep detail sections via env var (CRA): REACT_APP_SHOW_DETAIL_SECTIONS=true|false
+  const showDetailSections = String(process.env.REACT_APP_SHOW_DETAIL_SECTIONS || '').toLowerCase() === 'true';
+
   return (
     <div className="max-w-7xl mx-auto">
       {/* Your Brand Card */}
@@ -478,46 +481,48 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
       <SerpPanel defaultDomainFromUrl={defaultDomain} />
 
       {/* Schema Information */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-gray-800 rounded-lg shadow-lg p-6">
-          <h3 className="text-xl font-bold text-gray-100 mb-4">Schema Summary</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-300">Total Schemas:</span>
-              <span className="font-semibold text-gray-100">{(result as any).structured_data?.total_schemas || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-300">Valid Schemas:</span>
-              <span className="font-semibold text-green-400">{(result as any).structured_data?.valid_schemas || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-300">Invalid Schemas:</span>
-              <span className="font-semibold text-red-400">{(result as any).structured_data?.invalid_schemas || 0}</span>
+      {showDetailSections && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="bg-gray-800 rounded-lg shadow-lg p-6">
+            <h3 className="text-xl font-bold text-gray-100 mb-4">Schema Summary</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-300">Total Schemas:</span>
+                <span className="font-semibold text-gray-100">{(result as any).structured_data?.total_schemas || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Valid Schemas:</span>
+                <span className="font-semibold text-green-400">{(result as any).structured_data?.valid_schemas || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Invalid Schemas:</span>
+                <span className="font-semibold text-red-400">{(result as any).structured_data?.invalid_schemas || 0}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-gray-800 rounded-lg shadow-lg p-6">
-          <h3 className="text-xl font-bold text-gray-100 mb-4">Schema Types Found</h3>
-          {(result as any).structured_data?.schema_types && (result as any).structured_data.schema_types.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {(result as any).structured_data.schema_types.map((type: string, index: number) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-blue-900 text-blue-300 rounded-full text-sm"
-                >
-                  {type}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-400">No schema types found</p>
-          )}
+          <div className="bg-gray-800 rounded-lg shadow-lg p-6">
+            <h3 className="text-xl font-bold text-gray-100 mb-4">Schema Types Found</h3>
+            {(result as any).structured_data?.schema_types && (result as any).structured_data.schema_types.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {(result as any).structured_data.schema_types.map((type: string, index: number) => (
+                  <span
+                    key={index}
+                    className="px-3 py-1 bg-blue-900 text-blue-300 rounded-full text-sm"
+                  >
+                    {type}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-400">No schema types found</p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Structured Data Details */}
-      {(result as any).structured_data?.details && (result as any).structured_data.details.length > 0 && (
+      {showDetailSections && (result as any).structured_data?.details && (result as any).structured_data.details.length > 0 && (
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
           <h3 className="text-xl font-bold text-gray-100 mb-4">Structured Data Details</h3>
           <div className="overflow-x-auto">
@@ -577,7 +582,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
       )}
 
       {/* Knowledge Base Details */}
-      {(detailedAnalysis as any).knowledge_base && (
+      {showDetailSections && (detailedAnalysis as any).knowledge_base && (
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
           <h3 className="text-xl font-bold text-gray-100 mb-4">Knowledge Base Details</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -644,7 +649,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
       )}
 
       {/* Answerability Details */}
-      {(detailedAnalysis as any).answerability && (
+      {showDetailSections && (detailedAnalysis as any).answerability && (
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
           <h3 className="text-xl font-bold text-gray-100 mb-4">Answerability Details</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -684,7 +689,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
       )}
 
       {/* Crawler Accessibility Details */}
-      {(detailedAnalysis as any).crawler_accessibility && (
+      {showDetailSections && (detailedAnalysis as any).crawler_accessibility && (
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
           <h3 className="text-xl font-bold text-gray-100 mb-4">Crawler Accessibility Details</h3>
           {(() => {

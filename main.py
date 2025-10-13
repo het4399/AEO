@@ -25,6 +25,7 @@ if __name__ == '__main__':
     logger.info("- Knowledge Base Analysis")
     logger.info("- Answerability Analysis")
     logger.info("- AI Crawler Accessibility Analysis")
+    logger.info("- Structured Data Analysis")
     
     # Run the application
     app.run(
